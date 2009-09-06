@@ -19,9 +19,23 @@ from twisted.internet import defer
 class Splash(GladeWidget):
     gladefile = 'SplashScreen.glade'
     steps = {}
+    minShow = 3
+    canClose = finished = False
 
     def __init__(self, parent=None, type=gtk.WINDOW_TOPLEVEL):
         GladeWidget.__init__(self, parent)
+        def setCanClose():
+            self.canClose=True
+        reactor.callLater(self.minShow, setCanClose)
+
+    def destroy(self):
+        if not self.canClose:
+            reactor.callLater(1, self.destroy)
+            return
+        elif not self.finished:
+            reactor.callLater(1, self.destroy)
+            return
+        self.window.destroy()
 
     def prepare_widget(self):
         self.window = self.gladeTree.get_widget('mainWindow')
@@ -53,8 +67,9 @@ class Splash(GladeWidget):
         step_count = len(self.steps)
         step_fractions = [float(n)/(step_count-1) for n in range(step_count)]
 
-        def errback(*arrgs):
-            print 'ERROR', arrgs
+        def errback(failure):
+            print 'ERROR', failure
+            raise failure
 
         for step_num, step_fraction in zip(range(step_count), step_fractions):
             func, args, kwargs = self.steps[step_num]
@@ -62,28 +77,48 @@ class Splash(GladeWidget):
             d.addErrback(errback)
             d.addCallback(lambda d: self.progress.set_fraction(step_fraction))
             d.addErrback(errback)
+        self.finished = True
+#        reactor.callLater(0, self.progress.hide)
 
 class Application(gobject.GObject):
+
+    _progress_provider = []
+    def progress_provider(func, container=_progress_provider):
+        container.append(func)
+        from functools import wraps  # use this to preserve function signatures and docstrings
+        @wraps(func)
+        def wrapped(cls, *args, **kwargs):
+            return func(cls, *args, **kwargs)
+        return wrapped
+
     def __init__(self):
         self.__gobject_init__()
 
         self.splash = Splash(parent=self)
-        self.splash.register_step(self.setup_about_dialog)
-        self.splash.register_step(self.setup_trayicon)
-        self.splash.register_step(self.setup_trayicon_menu)
+        self.register_steps()
+#        self.splash.register_step(self.setup_about_dialog)
+#        self.splash.register_step(self.setup_trayicon)
+#        self.splash.register_step(self.setup_trayicon_menu)
 
-        r = open('/dev/urandom', 'r')
-        for n in range(12):
-            self.splash.register_step(r.read, 524288)
+#        r = open('/dev/urandom', 'r')
+#        for n in range(12):
+#            self.splash.register_step(r.read, 524288)
         reactor.callInThread(self.startup)
+
+    def register_steps(self):
+        for step in self._progress_provider:
+            self.splash.register_step(step, self)
 
     def startup(self):
         d = defer.maybeDeferred(self.splash.run)
-        d.addCallback(lambda *x: self.splash.window.destroy())
+        d.addCallback(lambda *x: self.splash.destroy())
+        return d
 
+    @progress_provider
     def setup_about_dialog(self):
         self.about_dialog = AboutDialog(self)
 
+    @progress_provider
     def setup_trayicon(self):
         tray_icon = gtk.StatusIcon()
         tray_icon.set_from_file(AFM_LOGO_PATH)
@@ -92,6 +127,7 @@ class Application(gobject.GObject):
         tray_icon.set_visible(True)
         self.tray_icon = tray_icon
 
+    @progress_provider
     def setup_trayicon_menu(self):
         """Creates the menu obtained when right-clicking the tray icon."""
         about = gtk.ImageMenuItem(gtk.STOCK_ABOUT)
