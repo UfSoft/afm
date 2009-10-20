@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<source name="RDP Internacional" uri="mms://195.245.168.21/rdpi">
+  <tests>
+    <test module="afm.checks.silence" class="SilenceChecker">
+      <params>
+        <!-- 3 seconds after audio has been bellow the value defined on 'silence_level' trigger the failure -->
+        <param name="min_tolerance" value="3000" type="int"/>
+        <!-- After the failure trigger wait 7 seconds to see if audio levels have become normal, if not, consider it a failure -->
+        <param name="max_tolerance" value="7000" type="int"/>
+        <!-- RMS level bellow which audio will be considered as silence -->
+        <param name="silence_level" value="-80" type="int"/>
+      </params>
+    </test>
+  </tests>
+</source>
