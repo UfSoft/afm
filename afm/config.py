@@ -187,6 +187,10 @@ def load_test(source, xmlconfig):
     for param_node in params_node.findall('param'):
         param = ConfigParam(param_node)
         params[param.name] = param.value
+
+#    module = __import__(module_name, globals(), locals(), [''])
+#    klass = getattr(module, class_name)
+#    return klass(source, **params)
+
     klass = namedAny('.'.join([module_name, class_name]))
-    klass.source = source
-    return klass(**params)
+    return klass(source, **params)

@@ -47,8 +47,9 @@ class LROk(BaseFailure):
 
 class SilenceChecker(object):
 
-    def __init__(self, min_tolerance=3000, max_tolerance=7000,
+    def __init__(self, source, min_tolerance=3000, max_tolerance=7000,
                  silence_level=-65):
+        self.source = source
         self.min_tolerance = min_tolerance
         self.max_tolerance = max_tolerance
         self.silence_level = silence_level #+ 45
