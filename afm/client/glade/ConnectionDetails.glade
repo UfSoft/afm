@@ -160,6 +160,7 @@
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="use_stock">True</property>
+                <signal name="clicked" handler="add_button_clicked_cb"/>
               </widget>
               <packing>
                 <property name="expand">False</property>
@@ -174,6 +175,7 @@
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="use_stock">True</property>
+                <signal name="clicked" handler="cancel_button_clicked_cb"/>
               </widget>
               <packing>
                 <property name="expand">False</property>

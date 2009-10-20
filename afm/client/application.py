@@ -13,6 +13,7 @@ import gobject
 import pango
 
 from afm.client.about import AboutDialog
+from afm.client.connections import ConnectionsManager
 from afm.client.glade import GladeWidget, AFM_LOGO_PATH
 from twisted.internet import defer
 
@@ -29,13 +30,11 @@ class Splash(GladeWidget):
         reactor.callLater(self.minShow, setCanClose)
 
     def destroy(self):
-        if not self.canClose:
-            reactor.callLater(1, self.destroy)
-            return
-        elif not self.finished:
+        if not self.canClose or not self.finished:
             reactor.callLater(1, self.destroy)
             return
         self.window.destroy()
+        self.parent.toggle_connections()
 
     def prepare_widget(self):
         self.window = self.gladeTree.get_widget('mainWindow')
@@ -82,6 +81,8 @@ class Splash(GladeWidget):
 
 class Application(gobject.GObject):
 
+    connected_to_core = False
+
     _progress_provider = []
     def progress_provider(func, container=_progress_provider):
         container.append(func)
@@ -96,13 +97,6 @@ class Application(gobject.GObject):
 
         self.splash = Splash(parent=self)
         self.register_steps()
-#        self.splash.register_step(self.setup_about_dialog)
-#        self.splash.register_step(self.setup_trayicon)
-#        self.splash.register_step(self.setup_trayicon_menu)
-
-#        r = open('/dev/urandom', 'r')
-#        for n in range(12):
-#            self.splash.register_step(r.read, 524288)
         reactor.callInThread(self.startup)
 
     def register_steps(self):
@@ -111,7 +105,8 @@ class Application(gobject.GObject):
 
     def startup(self):
         d = defer.maybeDeferred(self.splash.run)
-        d.addCallback(lambda *x: self.splash.destroy())
+#        d.addCallback(self.show_connections)
+        d.addCallback(lambda deferred: self.splash.destroy())
         return d
 
     @progress_provider
@@ -126,6 +121,7 @@ class Application(gobject.GObject):
         tray_icon.set_tooltip('Audio Failure Monitor')
         tray_icon.set_visible(True)
         self.tray_icon = tray_icon
+        self.tray_icon.connect('activate', self.toggle_window)
 
     @progress_provider
     def setup_trayicon_menu(self):
@@ -133,6 +129,11 @@ class Application(gobject.GObject):
         about = gtk.ImageMenuItem(gtk.STOCK_ABOUT)
         about.connect_object('activate', self.show_about, 'about')
         about.show()
+
+        connections = gtk.ImageMenuItem(gtk.STOCK_CONNECT)
+        connections.connect_object('activate', self.toggle_connections,
+                                   'connections')
+        connections.show()
 
         prefs = gtk.ImageMenuItem(gtk.STOCK_PREFERENCES)
 #        prefs.connect_object('activate', self.prefs, 'prefs')
@@ -144,9 +145,17 @@ class Application(gobject.GObject):
 
         menu = gtk.Menu()
         menu.append(about)
+        menu.append(connections)
         menu.append(prefs)
         menu.append(quit)
         self.tray_icon_menu = menu
+
+    @progress_provider
+    def setup_connections_manager(self):
+        self.connections_manager = ConnectionsManager(self)
+
+    def toggle_connections(self, widget=None):
+        self.connections_manager.toggle()
 
     def popup_menu(self, status_icon, button, activate_time):
         """Handler to be called when the tray icon is right-clicked.
@@ -171,6 +180,13 @@ class Application(gobject.GObject):
         """Exits the application."""
         self.tray_icon.set_visible(False)
         reactor.stop()
+
+    def toggle_window(self, widget=None):
+        dialog = self.connected_to_core and self or self.connections_manager
+        if dialog.get_property("visible"):
+            dialog.hide()
+        else:
+            dialog.show()
 
 if __name__ == '__main__':
     from twisted.internet import defer, reactor

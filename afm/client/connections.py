@@ -11,22 +11,73 @@ from afm.client.glade import *
 class ConnectionDetails(GladeWidget):
     gladefile = 'ConnectionDetails.glade'
 
+    def prepare_widget(self):
+        self.window = self.gladeTree.get_widget('connection_details')
+        self.name = self.gladeTree.get_widget('name')
+        self.hostname = self.gladeTree.get_widget('hostname')
+        self.port = self.gladeTree.get_widget('port')
+        self.port.set_value(58848)
+        self.username = self.gladeTree.get_widget('username')
+        self.password = self.gladeTree.get_widget('password')
+
+    def get_signal_handlers(self):
+        return {
+            'cancel_button_clicked_cb': lambda widget: self.window.hide(),
+            'add_button_clicked_cb': self.add_button_clicked_cb,
+        }
+
+    def show(self, widget=None):
+        self.window.show_all()
+
+    def hide(self, widget=None):
+        self.window.hide_all()
+
+    def toggle(self, widget=None):
+        if self.window.get_property("visible"):
+            self.hide()
+        else:
+            self.show()
+
+    def add_button_clicked_cb(self, widget):
+        pass
+
 
 class ConnectionsManager(GladeWidget):
     gladefile = 'ConnectionsManager.glade'
 
     def prepare_widget(self):
-        pass
+        self.window = self.gladeTree.get_widget('connection_manager')
 
-    def on_new_connection_button_activate(self):
+    def get_signal_handlers(self):
+        return {
+            'new_connection_button_clicked_cb': self.new_connection_button_clicked_cb,
+            'delete_connection_button_clicked_cb': self.delete_connection_button_clicked_cb,
+            'connect_button_clicked_cb': self.connect_button_clicked_cb,
+            'close_button_clicked_cb': self.close_button_clicked_cb
+        }
+
+    def new_connection_button_clicked_cb(self, widget):
         connection_details = ConnectionDetails(self)
         connection_details.show()
 
-    def on_delete_connection_button_activate(self):
+    def delete_connection_button_clicked_cb(self, widget):
         pass
 
-    def on_connect_button_activate(self):
+    def connect_button_clicked_cb(self, widget):
         pass
 
-    def on_exit_button_activate(self):
-        pass
+    def close_button_clicked_cb(self, widget):
+        print 'close'
+        self.hide()
+
+    def show(self, widget=None):
+        self.window.show_all()
+
+    def hide(self, widget=None):
+        self.window.hide_all()
+
+    def toggle(self, widget=None):
+        if self.window.get_property("visible"):
+            self.hide()
+        else:
+            self.show()

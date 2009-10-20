@@ -37,11 +37,16 @@ class GladeWidget(gobject.GObject):
                 raise RuntimeError("Could not find %r", self.gladefile)
             self.gladefile = gladefile
         self.gladeTree = gtk.glade.XML(self.gladefile)
-        self.gladeTree.signal_autoconnect(self.get_signal_handlers())
         self.prepare_widget()
+        self.gladeTree.signal_autoconnect(self.get_signal_handlers())
+        self.window.set_icon_from_file(getattr(self, 'icon_path',
+                                               AFM_LOGO_PATH))
 
     def get_signal_handlers(self):
         return {}
 
     def prepare_widget(self):
         pass
+
+    def get_property(self, name):
+        return self.window.get_property(name)

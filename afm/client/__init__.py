@@ -8,12 +8,9 @@
 
 try:
     from twisted.internet import gtk2reactor
-    gtk2reactor.install()
+    reactor = gtk2reactor.install()
 except AssertionError:
-    print 'Failed to install GTK2Reactor'
-
-import gobject
-gobject.threads_init()
+    raise RuntimeError('Failed to install GTK2Reactor')
 
 import pygst
 pygst.require("0.10")
@@ -21,7 +18,13 @@ import gst
 
 import pygtk
 pygtk.require('2.0')
+
 import gtk
+import gtk.gdk
+reactor.callWhenRunning(gtk.gdk.threads_init)
+
+import gobject
+reactor.callWhenRunning(gobject.threads_init)
 
 # GST Debugging
 gst.debug_set_active(True)
