@@ -1,28 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- comment foo bar -->
 <afm-config>
-  <core>
+  <daemon>
     <param name="port" value="58848" type="int"/>
     <param name="sources_path" value="./sources"/>
     <users>
       <user username="s0undt3ch" password="123"/>
     </users>
-  </core>
-  <servers>
-    <server name="Localhost">
-      <param name="hostname" value="localhost" type="str"/>
-      <param name="port" value="58848" type="int"/>
-      <param name="username" value="test" type="str"/>
-      <param name="password" value="test" type="str"/>
-    </server>
-    <server name="LGL">
-      <param name="hostname" value="lgl" type="str"/>
-      <param name="port" value="58848" type="int"/>
-      <param name="username" value="test" type="str"/>
-      <param name="password" value="test" type="str"/>
-    </server>
-  </servers>
+  </daemon>
   <ui>
+    <servers>
+      <server name="Localhost">
+        <param name="hostname" value="localhost" type="str"/>
+        <param name="port" value="58848" type="int"/>
+        <param name="username" value="test" type="str"/>
+        <param name="password" value="test" type="str"/>
+      </server>
+      <server name="LGL">
+        <param name="hostname" value="lgl" type="str"/>
+        <param name="port" value="58848" type="int"/>
+        <param name="username" value="test" type="str"/>
+        <param name="password" value="test" type="str"/>
+      </server>
+    </servers>
     <param name="show_splash" value="False" type="bool"/>
   </ui>
 </afm-config>
