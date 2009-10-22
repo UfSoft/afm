@@ -18,15 +18,34 @@ class Source(object):
         self.config = source_config
         self.name = self.config.name
         self.uri = self.config.uri
-        eventmanager.register_event_handler("SourcePrepared",
-                                            self.start)
+        self.buffer_percent = 0
+        eventmanager.register_event_handler("BufferingComplete", self.play)
+
+
+    @property
+    def active(self):
+        return self.config.active
 
     def prepare_source(self):
         self.pipeline = gst.Pipeline("%s-pipeline" % ''.join(self.name.split()))
         self.bus = self.pipeline.get_bus()
+        self.bus.add_signal_watch()
+        self.bus.connect('message::buffering',
+                         self.check_bus_buffering_messages)
 
         self.source = gst.element_factory_make('uridecodebin')
         self.source.set_property('uri', self.uri)
+        if hasattr(self.config, 'buffer_size'):
+            log.debug("Setting buffer-size of %s to %sMB",
+                      self, self.config.buffer_size)
+            self.source.set_property('buffer-size',
+                                     self.config.buffer_size*1024*1024)
+        if hasattr(self.config, 'buffer_duration'):
+            log.debug("Setting buffer-duration of %s to %s Secs",
+                      self, self.config.buffer_duration)
+            self.source.set_property('buffer-duration',
+                                     self.config.buffer_duration * 10e9) # 5 seconds
+
         self.sourcecaps = gst.Caps()
         self.sourcecaps.append_structure(gst.Structure("audio/x-raw-float"))
         self.sourcecaps.append_structure(gst.Structure("audio/x-raw-int"))
@@ -35,22 +54,33 @@ class Source(object):
         self.pipeline.add(self.source)
         self.source.connect("pad-added", self.on_pad_added)
         self.source.connect("no-more-pads", self.on_no_more_pads)
-        self.pipeline.set_state(gst.STATE_PAUSED)
+
         self.source.set_state(gst.STATE_PAUSED)
+        self.pipeline.set_state(gst.STATE_PAUSED)
         eventmanager.emit(events.SourcePrepared(self))
 
+
+    def check_bus_buffering_messages(self, bus, message):
+        self.buffer_percent = message.structure['buffer-percent']
+        log.debug("%s Buffer at %s%%", self.name, self.buffer_percent)
+        eventmanager.emit(events.Buffering(self, self.buffer_percent))
+        if self.buffer_percent == 100:
+            eventmanager.emit(events.BufferingComplete(self))
+        elif self.buffer_percent <= 40:
+            self.pause()
 
     def connect_signal_to_tests(self, *args, **kwargs):
         for test in self.tests:
             test.connect(*args, **kwargs)
 
     def on_no_more_pads(self, dbin):
-        reactor.callLater(0, self.pipeline.set_state, gst.STATE_PLAYING)
+        if self.buffer_percent == 100:
+            reactor.callLater(0, self.start, self)
 
     def gst_element_factory_make(self, element_name, n=None):
         return gst.element_factory_make(
-            element_name, '-'.join([n and '-'.join(element_name, n) or element_name,
-                                    ''.join(self.name.split())])
+            element_name, '-'.join([n and '-'.join(element_name, n) or
+                                    element_name, ''.join(self.name.split())])
         )
 
     def on_pad_added(self, dbin, sink_pad):
@@ -61,8 +91,8 @@ class Source(object):
             self.resample = self.gst_element_factory_make('audioresample')
             self.pipeline.add(self.resample)
 
-#            self.sink = self.gst_element_factory_make('alsasink')
-            self.sink = self.gst_element_factory_make('fakesink')
+            self.sink = self.gst_element_factory_make('alsasink')
+#            self.sink = self.gst_element_factory_make('fakesink')
             self.pipeline.add(self.sink)
 
             self.source.link(self.convert)
@@ -96,11 +126,26 @@ class Source(object):
     def __repr__(self):
         return '<%s name="%s">' % (self.__class__.__name__, self.name)
 
-    def start(self, source):
+    def play(self, source):
         if source is self:
-            self.pipeline.set_state(gst.STATE_PLAYING)
+            ret, state, pending = self.pipeline.get_state(0)
+            if state is not gst.STATE_PLAYING:
+                log.debug("%r PLAYING. Current state: %s", self, state)
+                self.pipeline.set_state(gst.STATE_PLAYING)
+                eventmanager.emit(events.SourcePlaying(self))
 
     def stop(self, source):
         if source is self:
-            self.pipeline.set_state(gst.STATE_NULL)
+            ret, state, pending = self.pipeline.get_state(0)
+            if state is not gst.STATE_NULL:
+                log.debug("%r STOPPING. Current state: %s", self, state)
+                self.pipeline.set_state(gst.STATE_NULL)
+                eventmanager.emit(events.SourceStopped(self))
+
+    def pause(self):
+        ret, state, pending = self.pipeline.get_state(0)
+        if state not in (gst.STATE_PAUSED, gst.STATE_READY):
+            log.debug("%r PAUSING. Current state: %s", self, state)
+            self.pipeline.set_state(gst.STATE_PAUSED)
+            eventmanager.emit(events.SourcePaused(self))
 

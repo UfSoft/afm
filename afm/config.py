@@ -38,7 +38,7 @@ DEFAULT_CONFIG = {
 
 class ConfigParam(object):
     def __init__(self, node):
-        self.name = node.get('name')
+        self.name = node.get('name').replace('-', '_')
         self.type = node.get('type')
         value = node.get('value')
         self.value = PARAM_TYPES[self.type](value)

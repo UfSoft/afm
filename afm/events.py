@@ -14,14 +14,23 @@ log = logging.getLogger(__name__)
 class EventManager(object):
     def __init__(self):
         self.handlers = {}
+        self.__events_queue = []
+        self.n = 0
 
     def emit(self, event):
-        log.debug("Emmiting event %r with args %r", event.name, event.args)
-        if hasattr(event, 'source'):
-            log.debug("Source %r id %r", event.source, id(event.source))
+        log.debug("Emiting event %r with args %r", event.name, event.args)
         if event.name in self.handlers:
             for handler in self.handlers[event.name]:
-                defer.maybeDeferred(handler, *event.args)
+                self.__events_queue.append((handler, event))
+        return defer.maybeDeferred(self.__dispatch_events_queue)
+
+    @defer.inlineCallbacks
+    def __dispatch_events_queue(self):
+        while self.__events_queue:
+            handler, event = self.__events_queue.pop(0)
+            log.debug("Firing event %r to handler %r with args %r",
+                      event.name, handler, event.args)
+            yield handler(*event.args)
 
     def register_event_handler(self, event, handler):
         log.debug("Registering handler %r for event %r", handler, event)
@@ -67,3 +76,25 @@ class SourceLoaded(Event):
 class SourcePrepared(Event):
     def __init__(self, source):
         self.source = source
+
+
+class SourcePlaying(Event):
+    def __init__(self, source):
+        self.source = source
+
+class SourcePaused(Event):
+    def __init__(self, source):
+        self.source = source
+
+class SourceStopped(Event):
+    def __init__(self, source):
+        self.source = source
+
+class BufferingComplete(Event):
+    def __init__(self, source):
+        self.source = source
+
+class Buffering(Event):
+    def __init__(self, source, percent):
+        self.source = source
+        self.percent = percent

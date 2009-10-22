@@ -89,7 +89,7 @@ class Application(object):
 #        import gtk
         # GST Debugging
 #        gst.debug_set_active(True)
-#        gst.debug_set_default_threshold(gst.LEVEL_WARNING)
+#        gst.debug_set_default_threshold(gst.LEVEL_INFO)
 #        gst.debug_set_colored(True)
 
 
@@ -106,16 +106,16 @@ class Application(object):
                                   pb.PBServerFactory(portal))
 
     def load_sources(self):
-        n = 0
         from afm.sources import Source
         available_sources = self.config.sources.keys()
         available_sources.sort()
         for source_name in available_sources:
             source_config = self.config.sources[source_name]
+            if not source_config.active:
+                logging.getLogger(__name__).debug("Skipping %s. Not Active.",
+                                                  source_config)
+                continue
             logging.getLogger(__name__).debug(source_config)
             source = Source(source_config)
             source.prepare_source()
-            if n >= 1:
-                break
-            n+=1
 

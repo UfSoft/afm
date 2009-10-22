@@ -52,10 +52,9 @@ class SilenceChecker(object):
         self.source = source
         self.min_tolerance = min_tolerance
         self.max_tolerance = max_tolerance
-        self.silence_level = silence_level #+ 45
-        self.sLw = self.sRw = self.sLRw = None # silence (left, right, left+right) warning
-        self.sLf = self.sRf = self.sLRf = None # silence (left, right, left+right) failure
-        print 888, self.source.name, id(self)
+        self.silence_level = silence_level
+        self.sLw = self.sRw = self.sLRw = None # silence (L, R, L+R) warning
+        self.sLf = self.sRf = self.sLRf = None # silence (L, R, L+R) failure
 
     def __call__(self):
         return self.gst_element
@@ -81,6 +80,8 @@ class SilenceChecker(object):
     def check_bus_messages(self, bus, message):
         if message.structure.get_name() == 'level':
             return self.handle_level_message(bus, message)
+        else:
+            log.debug(message.structure.get_name())
 
     def handle_level_message(self, bus, message):
         rms_L, rms_R = message.structure['rms']
