@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <source name="0 - Fiona" uri="file:///home/vampas/projects/AudioFailureMonitor/tests/FionaApple-FastAsYouCan2.wav">
+  <params>
+    <param name="active" value="0" type="bool"/>
+  </params>
   <tests>
     <test module="afm.checks.silence" class="SilenceChecker">
       <params>

@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <source name="Rádio Woodstock" uri="mms://195.245.168.21/radio3">
+  <params>
+    <param name="active" value="1" type="bool"/>
+  </params>
   <tests>
     <test module="afm.checks.silence" class="SilenceChecker">
       <params>

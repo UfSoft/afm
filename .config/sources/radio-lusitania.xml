@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<source name="Rádio Lusitânia" uri="mms://195.245.168.21/antena1">
+<source name="Rádio Lusitânia" uri="mms://195.245.168.21/lusitania">
+  <params>
+    <param name="active" value="0" type="bool"/>
+  </params>
   <tests>
     <test module="afm.checks.silence" class="SilenceChecker">
       <params>

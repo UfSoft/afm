@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <source name="RDP Madeira - Antena 1" uri="mms://195.245.168.21/rdpmad">
-<tests>
+  <params>
+    <param name="active" value="0" type="bool"/>
+  </params>
+  <tests>
     <test module="afm.checks.silence" class="SilenceChecker">
       <params>
         <!-- 3 seconds after audio has been bellow the value defined on 'silence_level' trigger the failure -->

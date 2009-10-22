@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <source name="RDP Açores - Antena 1" uri="mms://195.245.168.21/acores_a1">
+  <params>
+    <param name="active" value="0" type="bool"/>
+  </params>
   <tests>
     <test module="afm.checks.silence" class="SilenceChecker">
       <params>

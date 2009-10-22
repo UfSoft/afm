@@ -6,15 +6,9 @@
 # License: BSD - Please view the LICENSE file for additional information.
 # ==============================================================================
 
-#from types import ModuleType
-#
-#config = ModuleType('afm.common.config')
-#ui = config.ui = ModuleType('afm.common.config.ui')
-#core = config.core = ModuleType('afm.common.config.core')
-
 import logging
 from os import listdir
-from os.path import abspath, dirname, join
+from os.path import join
 from lxml import etree
 from twisted.python.reflect import namedAny
 
@@ -24,7 +18,7 @@ PARAM_TYPES = {
     None:    str,
     'str':   str,
     'int':   int,
-    'bool':  bool,
+    'bool':  lambda x: bool(int(x)),
     'float': float
 }
 
@@ -46,7 +40,8 @@ class ConfigParam(object):
     def __init__(self, node):
         self.name = node.get('name')
         self.type = node.get('type')
-        self.value = PARAM_TYPES[self.type](node.get('value'))
+        value = node.get('value')
+        self.value = PARAM_TYPES[self.type](value)
 
 class ConfigAttribute(object):
 
@@ -82,8 +77,8 @@ class Configuration(object):
 
     def load(self):
         log.debug("Loading Core Configuration")
-        # Core
-        node = self.root.find('core')
+        # Daemon configuration
+        node = self.root.find('daemon')
         core = ConfigAttribute()
         for param_node in node.findall('param'):
             param = ConfigParam(param_node)
@@ -102,7 +97,7 @@ class Configuration(object):
             users[username] = password
         self.users = users
 
-        # Sources Config
+        # Sources configuration
         sources = {}
         for filename in listdir(join(self.configdir, 'sources')):
             if filename.endswith('.xml'):
@@ -110,24 +105,6 @@ class Configuration(object):
                 config = SourceConfig(join(self.configdir, 'sources', filename))
                 sources[config.name] = config
         self.sources = sources
-
-#        # UI
-#        ui = ConfigAttribute()
-#        node = self.root.find('ui')
-#        for param_node in node.findall('param'):
-#            param = ConfigParam(param_node)
-#            setattr(ui, param.name, param.value)
-#        self.ui = ui
-#        self.ui_node = node
-#
-##        # Servers
-##        node = self.root.find('servers')
-##        servers = {}
-##        for server_node in node.findall('server'):
-##            server = Server.parse(server_node)
-##            servers[server.name] = server
-##        self.servers = servers
-##        self.servers_node = node
 
     def save(self, output):
         # UI
@@ -165,10 +142,14 @@ class SourceConfig(object):
         self.root = self.tree.getroot()
         self.name = self.root.get('name').encode('utf-8')
         self.uri = self.root.get('uri')
+        self.load_params()
         log.debug("Loading Audio Source '%s' '%s'", self.name, self.uri)
 
-    def load(self):
-        pass
+    def load_params(self):
+        params_node = self.root.find('params')
+        for param_node in params_node.findall('param'):
+            param = ConfigParam(param_node)
+            setattr(self, param.name, param.value)
 
     def get_tests(self, source):
         tests = self.root.find('tests')
@@ -191,6 +172,4 @@ def load_test(source, xmlconfig):
 #    module = __import__(module_name, globals(), locals(), [''])
 #    klass = getattr(module, class_name)
 #    return klass(source, **params)
-
-    klass = namedAny('.'.join([module_name, class_name]))
-    return klass(source, **params)
+    return namedAny('.'.join([module_name, class_name]))(source, **params)
