@@ -77,6 +77,7 @@ class Application(object):
     def load_config(self):
         from afm.config import Configuration
         self.config = Configuration(self.opts['config-dir'])
+        self.config.load_core_config()
 
     def setup_gstreamer(self):
         import gobject

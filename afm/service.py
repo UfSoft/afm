@@ -20,7 +20,7 @@ from zope.interface import implements
 from afm import __summary__, __version__, application, events
 
 
-class Options(usage.Options):
+class DaemonOptions(usage.Options):
     longdesc = __summary__
 
     optFlags = [
@@ -78,7 +78,14 @@ class Options(usage.Options):
         application = Application(self.opts)
         return application.get_service()
 
-def main():
+class ClientOptions(DaemonOptions):
+
+    def getService(self):
+        from afm.client.app import Application
+        application = Application(self.opts)
+        return application.get_service()
+
+def daemon():
     from twisted.internet import glib2reactor
     glib2reactor.install()
     from twisted.internet import reactor
@@ -86,7 +93,7 @@ def main():
     main_app = Application("Audio Failure Monitor") #, uid, gid)
 
     services = IServiceCollection(main_app)
-    options = Options()
+    options = DaemonOptions()
     options.parseOptions()
     service = options.getService()
     service.setServiceParent(services)
@@ -103,5 +110,28 @@ def main():
     except KeyboardInterrupt:
         reactor.stop()
 
-if __name__ == '__main__':
-    main()
+def client():
+    from twisted.internet import gtk2reactor
+    gtk2reactor.install()
+    from twisted.internet import reactor
+
+    options = ClientOptions()
+    options.parseOptions()
+
+    from afm.client.app import Application
+    app = Application(options)
+
+    reactor.addSystemEventTrigger('before', 'shutdown',
+                                  logging.getLogger(__name__).info,
+                                  'Stopping AFM Client')
+
+    logging.getLogger(__name__).info("AFM Client Started")
+    try:
+        reactor.run()
+    except KeyboardInterrupt:
+        reactor.stop()
+    except:
+        raise
+        from twisted.python import log
+        log.err()
+

@@ -73,9 +73,8 @@ class Configuration(object):
         self.tree = etree.parse(self.configfile)
         self.root = self.tree.getroot()
         self.defaults = DEFAULT_CONFIG.copy()
-        self.load()
 
-    def load(self):
+    def load_core_config(self):
         log.debug("Loading Core Configuration")
         # Daemon configuration
         node = self.root.find('daemon')
@@ -96,7 +95,10 @@ class Configuration(object):
             log.debug('User %r can access the core', username)
             users[username] = password
         self.users = users
+        self.load_sources_config()
 
+    def load_sources_config(self):
+        log.debug("Loading Sources Configuration")
         # Sources configuration
         sources = {}
         for filename in listdir(join(self.configdir, 'sources')):
@@ -105,6 +107,27 @@ class Configuration(object):
                 config = SourceConfig(join(self.configdir, 'sources', filename))
                 sources[config.name] = config
         self.sources = sources
+
+    def load_ui_config(self):
+        log.debug("Loading Connections Configuration")
+        node = self.root.find('ui')
+        ui = ConfigAttribute()
+        for param_node in node.findall('param'):
+            param = ConfigParam(param_node)
+            log.debug("On param node %r with value %r", param.name, param.value)
+            setattr(ui, param.name, param.value)
+        self.ui = ui
+        self.ui.__node__ = node
+        self.load_server_connections_config()
+
+    def load_server_connections_config(self):
+        node = self.ui.__node__.find('servers')
+        servers = {}
+        for server_node in node.findall('server'):
+            server = ServerConfig(server_node)
+            print server
+            servers[server.name] = server
+        self.ui.servers = servers
 
     def save(self, output):
         # UI
@@ -159,6 +182,19 @@ class SourceConfig(object):
 
     def __repr__(self):
         return '<SourceConfig name="%(name)s" uri="%(uri)s">' % self.__dict__
+
+class ServerConfig(object):
+    def __init__(self, tree_node):
+        self.root = tree_node
+        self.name = tree_node.get('name').encode('utf-8')
+        log.debug("Loading server connection '%s'", self.name)
+        self.load_params()
+
+    def load_params(self):
+        params_node = self.root.find('params')
+        for param_node in params_node.findall('param'):
+            param = ConfigParam(param_node)
+            setattr(self, param.name, param.value)
 
 def load_test(source, xmlconfig):
     params = {}

@@ -28,7 +28,8 @@ setup(name=afm.__package__,
 #      },
       entry_points = """
       [console_scripts]
-      afm = afm.service:main
+      afm-daemon = afm.service:daemon
+      afm-client = afm.service:client
 
       [distutils.commands]
       compile = babel.messages.frontend:compile_catalog
