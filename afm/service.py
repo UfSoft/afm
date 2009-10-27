@@ -114,6 +114,10 @@ def client():
     from twisted.internet import gtk2reactor
     gtk2reactor.install()
     from twisted.internet import reactor
+    import gobject
+
+    reactor.callWhenRunning(gobject.threads_init)
+#    gobject.threads_init()
 
     options = ClientOptions()
     options.parseOptions()

@@ -43,12 +43,22 @@ class ConnectionDetails(GladeWidget):
         pass
 
 
+CON_STATUS, CON_NAME, CON_HOST, CON_PORT, CON_USER, CON_PASSWD = range(6)
+ST_OFFLINE, ST_ONLINE, ST_CONNECTED = range(3)
+
 class ConnectionsManager(GladeWidget):
     gladefile = 'ConnectionsManager.glade'
 
     def prepare_widget(self):
         self.window = self.gladeTree.get_widget('connection_manager')
         self.window.set_icon(AFM_LOGO_PIXBUF)
+
+        self.conn_status_pixbuff = []
+        for stock_id in (gtk.STOCK_NO, gtk.STOCK_YES, gtk.STOCK_CONNECT):
+            self.conn_status_pixbuff.append(
+                self.window.render_icon(stock_id, gtk.ICON_SIZE_MENU)
+            )
+        self.prepare_connections()
 
     def get_signal_handlers(self):
         return {
@@ -71,6 +81,81 @@ class ConnectionsManager(GladeWidget):
     def close_button_clicked_cb(self, widget):
         print 'close'
         self.hide()
+
+    def prepare_connections(self):
+        self.conn_treeview = self.gladeTree.get_widget('connections_treeview')
+        self.conn_model = self._conn_create_model()
+        self.conn_treeview.set_model(self.conn_model)
+        self._conn_model_populate()
+        self._conn_create_columns()
+
+    def _conn_create_model(self):
+        conn_model = gtk.ListStore(gobject.TYPE_INT,        # Status
+                                   gobject.TYPE_STRING,     # Name
+                                   gobject.TYPE_STRING,     # Hostname
+                                   gobject.TYPE_INT,        # Port
+                                   gobject.TYPE_STRING)     # Username)
+
+    def _conn_model_populate(self):
+        for conn in self.parent.config.ui.servers.itervalues():
+            self.conn_model.set(self.conn_model.append(),
+                                CON_STATUS, ST_OFFLINE,
+                                CON_NAME, conn.name,
+                                CON_HOST, conn.hostname,
+                                CON_PORT, conn.port,
+                                CON_USER, conn.username)
+
+    def _conn_create_columns(self):
+        # Status
+        renderer = gtk.CellRendererPixbuf()
+        renderer.set_data("column", CON_STATUS)
+        column = gtk.TreeViewColumn('Status', renderer)
+        column.set_cell_data_func(renderer, self._conn_status_cell_render,
+                                  CON_STATUS)
+        self.conn_treeview.append_column(column)
+
+        # Name
+        renderer = gtk.CellRendererText()
+        renderer.set_data("column", CON_NAME)
+        column = gtk.TreeViewColumn('Name', renderer,
+                                    text=CON_NAME,
+                                    editable=False)
+        column.set_expand(True)
+        self.conn_treeview.append_column(column)
+
+        # Hostname
+        renderer = gtk.CellRendererText()
+        renderer.set_data("column", CON_HOST)
+        column = gtk.TreeViewColumn('Hostname', renderer,
+                                    text=CON_HOST,
+                                    editable=False)
+        column.set_expand(True)
+        self.conn_treeview.append_column(column)
+
+        # Port
+        renderer = gtk.CellRendererText()
+        renderer.set_data("column", CON_PORT)
+        column = gtk.TreeViewColumn('Port', renderer,
+                                    text=CON_PORT,
+                                    editable=False)
+        self.conn_treeview.append_column(column)
+
+        # Username
+        renderer = gtk.CellRendererText()
+        renderer.set_data("column", CON_USER)
+        column = gtk.TreeViewColumn('Username', renderer,
+                                    text=CON_USER,
+                                    editable=False)
+        column.set_expand(True)
+        self.conn_treeview.append_column(column)
+
+    def _conn_status_cell_render(self, column, cell, model, row, data):
+        status = model[row][data]
+        pixbuf = None
+        if status in range(3):
+            pixbuf = self.conn_status_pixbuff[status]
+            cell.set_property("pixbuf", pixbuf)
+
 
     def load_connections(self):
         pass

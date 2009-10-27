@@ -26,6 +26,7 @@ class Splash(GladeWidget):
 
     def __init__(self, parent=None, type=gtk.WINDOW_TOPLEVEL):
         GladeWidget.__init__(self, parent)
+        self.can_close = False
 
     def prepare_widget(self):
         self.window = self.gladeTree.get_widget('mainWindow')
@@ -55,6 +56,7 @@ class Splash(GladeWidget):
 
     @defer.inlineCallbacks
     def run(self):
+        yield reactor.callLater(5, setattr, self, 'can_close', True)
         log = logging.getLogger(__name__)
         step_count = len(self.steps)
         step_fractions = [float(n)/(step_count-1) for n in range(step_count)]
@@ -91,7 +93,6 @@ class Application(object):
         reactor.callInThread(self.startup)
 
     def setup_logging(self):
-
         log = logging.getLogger('afm')
         log.setLevel(self.opts['logging_level'])
         if self.opts['logfile']:
@@ -131,11 +132,11 @@ class Application(object):
     @defer.inlineCallbacks
     def startup(self):
         yield self.splash.run()
+        if self.opts['logging_level'] != logging.DEBUG:
+            while not self.splash.can_close:
+                pass
         yield self.splash.window.destroy()
         yield self.connmanager.window.show()
-#        d = defer.maybeDeferred(self.splash.run)
-#        d.addCallback(lambda *x: self.splash.window.destroy())
-#        d.addCallback(lambda *x: self.connmanager.window.show())
 
     def setup_about_dialog(self):
         self.about_dialog = AboutDialog(self)
