@@ -2,7 +2,8 @@
 <!-- comment foo bar -->
 <afm-config>
   <daemon>
-    <param name="port" value="58848" type="int"/>
+    <param name="core_port" value="58859" type="int"/>
+    <param name="info_port" value="58849" type="int"/>
     <param name="sources_path" value="./sources"/>
     <users>
       <user username="test" password="test" level="2"/>
@@ -10,8 +11,8 @@
   </daemon>
   <ui>
     <servers>
-      <server name="Localhost" uri="pbu://localhost:58848/info"/>
-      <server name="LGL" uri="pbu://lgl:58848/info"/>
+      <server name="Localhost" uri="pbu://localhost:58849/info"/>
+      <server name="LGL" uri="pbu://lgl:58849/info"/>
     </servers>
     <param name="show_splash" value="1" type="bool"/>
   </ui>
