@@ -89,11 +89,10 @@ class Configuration(object):
         # Core Users
         node = node.find('users')
         users = {}
-        for user in node.findall('user'):
-            username = user.get('username')
-            password = user.get('password')
-            log.debug('User %r can access the core', username)
-            users[username] = password
+        for user_node in node.findall('user'):
+            user_config = UserConfig(user_node)
+            log.debug('User %r can access the core', user_config.username)
+            users[user_config.username] = user_config
         self.users = users
         self.load_sources_config()
 
@@ -195,6 +194,14 @@ class ServerConfig(object):
         for param_node in params_node.findall('param'):
             param = ConfigParam(param_node)
             setattr(self, param.name, param.value)
+
+class UserConfig(object):
+
+    def __init__(self, tree_node):
+        self.root = tree_node
+        self.username = tree_node.get('username').encode('utf-8')
+        self.password = tree_node.get('password').encode('utf-8')
+        self.level = int(tree_node.get('level'))
 
 def load_test(source, xmlconfig):
     params = {}

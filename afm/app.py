@@ -17,18 +17,6 @@ from zope.interface import implements
 
 from afm import eventmanager, events
 
-class AFMAvatar(pb.Avatar):
-    pass
-
-class ServiceRealm(object):
-    implements(IRealm)
-
-    def requestAvatar(self, avatarId, mind, *interfaces):
-        if pb.IPerspective in interfaces:
-            a = AFMAvatar()
-            return pb.IPerspective, a, lambda : None
-        else:
-            raise NotImplementedError("no interface")
 
 class Application(object):
 
@@ -96,27 +84,27 @@ class Application(object):
 
     def get_service(self):
         from afm import eventmanager
+        from afm.cred import AFMChecker, ServiceRealm
         portal = Portal(ServiceRealm())
-        checker = InMemoryUsernamePasswordDatabaseDontUse()
-        for username, password in self.config.users.iteritems():
-            checker.addUser(username, password)
+        checker = AFMChecker()
+        checker.app = self
         portal.registerChecker(checker)
+        factory = pb.PBServerFactory(portal)
         from twisted.internet import reactor
         eventmanager.emit(events.ApplicationLoaded())
-        return internet.TCPServer(self.config.core.port,
-                                  pb.PBServerFactory(portal))
+        return internet.TCPServer(self.config.core.port, factory)
 
     def load_sources(self):
         from afm.sources import Source
+        log = logging.getLogger(__name__)
         available_sources = self.config.sources.keys()
         available_sources.sort()
         for source_name in available_sources:
             source_config = self.config.sources[source_name]
             if not source_config.active:
-                logging.getLogger(__name__).debug("Skipping %s. Not Active.",
-                                                  source_config)
+                log.debug("Skipping %s. Not Active.", source_config)
                 continue
-            logging.getLogger(__name__).debug(source_config)
+            log.debug("%s active. Loading...", source_config)
             source = Source(source_config)
             source.prepare_source()
 

@@ -6,7 +6,13 @@
 # License: BSD - Please view the LICENSE file for additional information.
 # ==============================================================================
 
-from afm.client.glade import *
+import logging
+
+from twisted.internet import reactor
+from afm.ui.glade import *
+from afm.client import Client
+
+log = logging.getLogger(__name__)
 
 class ConnectionDetails(GladeWidget):
     gladefile = 'ConnectionDetails.glade'
@@ -84,17 +90,19 @@ class ConnectionsManager(GladeWidget):
 
     def prepare_connections(self):
         self.conn_treeview = self.gladeTree.get_widget('connections_treeview')
-        self.conn_model = self._conn_create_model()
+        self._conn_create_model()
         self.conn_treeview.set_model(self.conn_model)
         self._conn_model_populate()
         self._conn_create_columns()
 
     def _conn_create_model(self):
-        conn_model = gtk.ListStore(gobject.TYPE_INT,        # Status
-                                   gobject.TYPE_STRING,     # Name
-                                   gobject.TYPE_STRING,     # Hostname
-                                   gobject.TYPE_INT,        # Port
-                                   gobject.TYPE_STRING)     # Username)
+        self.conn_model = gtk.ListStore(gobject.TYPE_INT,        # Status
+                                        gobject.TYPE_STRING,     # Name
+                                        gobject.TYPE_STRING,     # Hostname
+                                        gobject.TYPE_INT,        # Port
+                                        gobject.TYPE_STRING,     # Username)
+                                        gobject.TYPE_STRING)     # Password
+
 
     def _conn_model_populate(self):
         for conn in self.parent.config.ui.servers.itervalues():
@@ -103,7 +111,9 @@ class ConnectionsManager(GladeWidget):
                                 CON_NAME, conn.name,
                                 CON_HOST, conn.hostname,
                                 CON_PORT, conn.port,
-                                CON_USER, conn.username)
+                                CON_USER, conn.username,
+                                CON_PASSWD, conn.password)
+        reactor.callLater(1, self._conn_udpate_status)
 
     def _conn_create_columns(self):
         # Status
@@ -155,6 +165,25 @@ class ConnectionsManager(GladeWidget):
         if status in range(3):
             pixbuf = self.conn_status_pixbuff[status]
             cell.set_property("pixbuf", pixbuf)
+
+    def _conn_udpate_status(self):
+        for entry in self.conn_model:
+            log.debug(entry[1])
+            status = entry[CON_STATUS]
+            name = entry[CON_NAME]
+            host = entry[CON_HOST]
+            port = entry[CON_PORT]
+            user = entry[CON_USER]
+            password = entry[CON_PASSWD]
+            log.debug("Server connection Attempt: %s %s %s", host, port, user)
+            client = Client()
+            d = client.connect(host, port, user, password)
+            def update_status(ret_status):
+                print ret_status
+                entry[CON_STATUS] = ret_status
+            def failure(fail):
+                log.debug("Failed to update status")
+            d.addCallback(update_status).addErrback(failure)
 
 
     def load_connections(self):

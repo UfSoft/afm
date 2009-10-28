@@ -8,7 +8,7 @@
 
 import gtk
 import webbrowser
-from afm.client.glade import AFM_LOGO_PIXBUF, _
+from afm.ui.glade import AFM_LOGO_PIXBUF, _
 
 import irssinotifier
 

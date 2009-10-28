@@ -14,9 +14,9 @@ import gobject
 
 import pango
 
-from afm.client.about import AboutDialog
-from afm.client.connections import ConnectionsManager
-from afm.client.glade import GladeWidget, AFM_LOGO_PATH
+from afm.ui.about import AboutDialog
+from afm.ui.connections import ConnectionsManager
+from afm.ui.glade import GladeWidget, AFM_LOGO_PATH
 from twisted.internet import defer, reactor
 from twisted.python.log import PythonLoggingObserver
 
@@ -87,9 +87,9 @@ class Application(object):
         self.splash.register_step(self.setup_connections_manager)
         self.splash.register_step(self.setup_trayicon_menu)
 
-        r = open('/dev/urandom', 'r')
-        for n in range(12):
-            self.splash.register_step(r.read, 524288)
+#        r = open('/dev/urandom', 'r')
+#        for n in range(12):
+#            self.splash.register_step(r.read, 524288)
         reactor.callInThread(self.startup)
 
     def setup_logging(self):

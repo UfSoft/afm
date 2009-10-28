@@ -5,7 +5,7 @@
     <param name="port" value="58848" type="int"/>
     <param name="sources_path" value="./sources"/>
     <users>
-      <user username="test" password="test"/>
+      <user username="test" password="test" level="2"/>
     </users>
   </daemon>
   <ui>
