@@ -86,14 +86,14 @@ class Configuration(object):
         self.core = core
         self.core.__node__ = node
 
-        # Core Users
-        node = node.find('users')
-        users = {}
-        for user_node in node.findall('user'):
-            user_config = UserConfig(user_node)
-            log.debug('User %r can access the core', user_config.username)
-            users[user_config.username] = user_config
-        self.users = users
+#        # Core Users
+#        node = node.find('users')
+#        users = {}
+#        for user_node in node.findall('user'):
+#            user_config = UserConfig(user_node)
+#            log.debug('User %r can access the core', user_config.username)
+#            users[user_config.username] = user_config
+#        self.users = users
         self.load_sources_config()
 
     def load_sources_config(self):
@@ -186,22 +186,8 @@ class ServerConfig(object):
     def __init__(self, tree_node):
         self.root = tree_node
         self.name = tree_node.get('name').encode('utf-8')
+        self.uri = tree_node.get('uri').encode('utf-8')
         log.debug("Loading server connection '%s'", self.name)
-        self.load_params()
-
-    def load_params(self):
-        params_node = self.root.find('params')
-        for param_node in params_node.findall('param'):
-            param = ConfigParam(param_node)
-            setattr(self, param.name, param.value)
-
-class UserConfig(object):
-
-    def __init__(self, tree_node):
-        self.root = tree_node
-        self.username = tree_node.get('username').encode('utf-8')
-        self.password = tree_node.get('password').encode('utf-8')
-        self.level = int(tree_node.get('level'))
 
 def load_test(source, xmlconfig):
     params = {}

@@ -98,3 +98,7 @@ class Buffering(Event):
     def __init__(self, source, percent):
         self.source = source
         self.percent = percent
+
+class CoreUrlGenerated(Event):
+    def __init__(self, url):
+        self.url = url

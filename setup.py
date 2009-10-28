@@ -22,7 +22,7 @@ setup(name=afm.__package__,
       platforms="OS Independent - Anywhere Twisted and GStremaer is known to run.",
       keywords = "Twisted Gstreamer",
       packages=['afm'],
-#      install_requires = ['simplejson', 'SQLAlchemy', 'decorator'],
+      install_requires = ['foolscap'],
 #      package_data={
 #          'sshg': ['upgrades/*.cfg']
 #      },

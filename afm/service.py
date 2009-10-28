@@ -76,7 +76,7 @@ class DaemonOptions(usage.Options):
     def getService(self):
         from afm.app import Application
         application = Application(self.opts)
-        return application.get_service()
+        return application
 
 class ClientOptions(DaemonOptions):
 
@@ -95,8 +95,10 @@ def daemon():
     services = IServiceCollection(main_app)
     options = DaemonOptions()
     options.parseOptions()
-    service = options.getService()
-    service.setServiceParent(services)
+
+    application = options.getService()
+    application.infotub.setServiceParent(services)
+    application.coretub.setServiceParent(services)
 
     app.startApplication(main_app, False)
 

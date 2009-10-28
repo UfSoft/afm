@@ -10,22 +10,8 @@
   </daemon>
   <ui>
     <servers>
-      <server name="Localhost">
-        <params>
-          <param name="hostname" value="localhost" type="str"/>
-          <param name="port" value="58848" type="int"/>
-          <param name="username" value="test" type="str"/>
-          <param name="password" value="test" type="str"/>
-        </params>
-      </server>
-      <server name="LGL">
-        <params>
-          <param name="hostname" value="lgl" type="str"/>
-          <param name="port" value="58848" type="int"/>
-          <param name="username" value="test" type="str"/>
-          <param name="password" value="test" type="str"/>
-        </params>
-      </server>
+      <server name="Localhost" uri="pbu://localhost:58848/info"/>
+      <server name="LGL" uri="pbu://lgl:58848/info"/>
     </servers>
     <param name="show_splash" value="1" type="bool"/>
   </ui>

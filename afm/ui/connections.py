@@ -8,9 +8,9 @@
 
 import logging
 
-from twisted.internet import reactor
+from twisted.internet import defer
+from foolscap.api import Tub
 from afm.ui.glade import *
-from afm.client import Client
 
 log = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class ConnectionDetails(GladeWidget):
         pass
 
 
-CON_STATUS, CON_NAME, CON_HOST, CON_PORT, CON_USER, CON_PASSWD = range(6)
+CON_STATUS, CON_NAME, CON_URI, CON_VERSION, CON_CORE_URI = range(5)
 ST_OFFLINE, ST_ONLINE, ST_CONNECTED = range(3)
 
 class ConnectionsManager(GladeWidget):
@@ -94,14 +94,14 @@ class ConnectionsManager(GladeWidget):
         self.conn_treeview.set_model(self.conn_model)
         self._conn_model_populate()
         self._conn_create_columns()
+        self._conn_update_status()
 
     def _conn_create_model(self):
         self.conn_model = gtk.ListStore(gobject.TYPE_INT,        # Status
                                         gobject.TYPE_STRING,     # Name
-                                        gobject.TYPE_STRING,     # Hostname
-                                        gobject.TYPE_INT,        # Port
-                                        gobject.TYPE_STRING,     # Username)
-                                        gobject.TYPE_STRING)     # Password
+                                        gobject.TYPE_STRING,     # URI
+                                        gobject.TYPE_STRING,     # Version
+                                        gobject.TYPE_STRING)     # Core URI
 
 
     def _conn_model_populate(self):
@@ -109,11 +109,9 @@ class ConnectionsManager(GladeWidget):
             self.conn_model.set(self.conn_model.append(),
                                 CON_STATUS, ST_OFFLINE,
                                 CON_NAME, conn.name,
-                                CON_HOST, conn.hostname,
-                                CON_PORT, conn.port,
-                                CON_USER, conn.username,
-                                CON_PASSWD, conn.password)
-        reactor.callLater(1, self._conn_udpate_status)
+                                CON_URI, conn.uri,
+                                CON_VERSION, '',
+                                CON_CORE_URI, '')
 
     def _conn_create_columns(self):
         # Status
@@ -133,30 +131,21 @@ class ConnectionsManager(GladeWidget):
         column.set_expand(True)
         self.conn_treeview.append_column(column)
 
-        # Hostname
+        # URI
         renderer = gtk.CellRendererText()
-        renderer.set_data("column", CON_HOST)
-        column = gtk.TreeViewColumn('Hostname', renderer,
-                                    text=CON_HOST,
+        renderer.set_data("column", CON_URI)
+        column = gtk.TreeViewColumn('Url', renderer,
+                                    text=CON_URI,
                                     editable=False)
         column.set_expand(True)
         self.conn_treeview.append_column(column)
 
-        # Port
+        # Version
         renderer = gtk.CellRendererText()
-        renderer.set_data("column", CON_PORT)
-        column = gtk.TreeViewColumn('Port', renderer,
-                                    text=CON_PORT,
+        renderer.set_data("column", CON_VERSION)
+        column = gtk.TreeViewColumn('Version', renderer,
+                                    text=CON_VERSION,
                                     editable=False)
-        self.conn_treeview.append_column(column)
-
-        # Username
-        renderer = gtk.CellRendererText()
-        renderer.set_data("column", CON_USER)
-        column = gtk.TreeViewColumn('Username', renderer,
-                                    text=CON_USER,
-                                    editable=False)
-        column.set_expand(True)
         self.conn_treeview.append_column(column)
 
     def _conn_status_cell_render(self, column, cell, model, row, data):
@@ -164,30 +153,43 @@ class ConnectionsManager(GladeWidget):
         pixbuf = None
         if status in range(3):
             pixbuf = self.conn_status_pixbuff[status]
-            cell.set_property("pixbuf", pixbuf)
+        cell.set_property("pixbuf", pixbuf)
 
-    def _conn_udpate_status(self):
+    def __update_core_version(self, remote_version, entry):
+        log.debug("Got core version for URI %s: %s", entry[CON_URI],
+                  remote_version)
+        entry[CON_VERSION] = remote_version
+
+    def __update_core_uri(self, core_uri, entry):
+        log.debug("Got remote core URI for %s: %s", entry[CON_URI], core_uri)
+        entry[CON_CORE_URI] = core_uri
+        entry[CON_STATUS] = ST_ONLINE
+
+    @defer.inlineCallbacks
+    def __got_remote_reference(self, remote, entry):
+        log.debug("Got remote tub reference for URI %s", entry[CON_URI])
+        d = remote.callRemote('version')
+        d.addCallback(self.__update_core_version, entry)
+        d.addErrback(self.__remote_tub_failure, entry)
+        yield d
+        d = remote.callRemote('uri')
+        d.addCallback(self.__update_core_uri, entry)
+        d.addErrback(self.__remote_tub_failure, entry)
+        yield d
+
+    def __remote_tub_failure(self, fail, entry):
+        log.debug("Failed to process remote call for URI %s: %s",
+                  entry[CON_URI], fail)
+
+    def _conn_update_status(self):
         for entry in self.conn_model:
-            log.debug(entry[1])
-            status = entry[CON_STATUS]
-            name = entry[CON_NAME]
-            host = entry[CON_HOST]
-            port = entry[CON_PORT]
-            user = entry[CON_USER]
-            password = entry[CON_PASSWD]
-            log.debug("Server connection Attempt: %s %s %s", host, port, user)
-            client = Client()
-            d = client.connect(host, port, user, password)
-            def update_status(ret_status):
-                print ret_status
-                entry[CON_STATUS] = ret_status
-            def failure(fail):
-                log.debug("Failed to update status")
-            d.addCallback(update_status).addErrback(failure)
-
-
-    def load_connections(self):
-        pass
+            uri = entry[CON_URI]
+            log.debug("Server connection Attempt: %s", uri)
+            tub = Tub()
+            tub.startService()
+            d = tub.getReference(uri)
+            d.addCallback(self.__got_remote_reference, entry)
+            d.addErrback(self.__remote_tub_failure, entry)
 
     def show(self, widget=None):
         self.window.show_all()

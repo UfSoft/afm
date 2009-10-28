@@ -9,24 +9,39 @@
 import logging
 
 from twisted.application import internet
-from twisted.cred.portal import IRealm, Portal
-from twisted.cred.checkers import InMemoryUsernamePasswordDatabaseDontUse
 from twisted.python.log import PythonLoggingObserver
-from twisted.spread import pb
-from zope.interface import implements
+from foolscap.api import Referenceable, Tub, UnauthenticatedTub
 
-from afm import eventmanager, events
+from afm import eventmanager, events, __version__
+
+class InfoTub(Referenceable):
+
+    def __init__(self):
+        Referenceable.__init__(self)
+        eventmanager.register_event_handler("CoreUrlGenerated",
+                                            self._update_core_url)
+
+    def remote_version(self):
+        return __version__
+
+    def remote_uri(self):
+        return self.coreurl
+
+    def _update_core_url(self, coreurl):
+        self.coreurl = coreurl
 
 
 class Application(object):
 
     def __init__(self, parsed_options):
         self.opts = parsed_options
-        self.setup_logging()
-        self.load_config()
-        self.setup_gstreamer()
         eventmanager.register_event_handler("ApplicationLoaded",
                                             self.load_sources)
+        self.setup_logging()
+        self.load_config()
+        self.setup_tubs()
+        self.setup_gstreamer()
+        eventmanager.emit(events.ApplicationLoaded())
 
 
     def setup_logging(self):
@@ -67,6 +82,24 @@ class Application(object):
         self.config = Configuration(self.opts['config-dir'])
         self.config.load_core_config()
 
+    def setup_tubs(self):
+        self.infotub = UnauthenticatedTub()
+        self.infotub.listenOn('tcp:%d' % self.config.core.port)
+        self.infotub.setLocation("localhost:%d" % self.config.core.port)
+#        self.infotub.setLocationAutomatically()
+        info_server = InfoTub()
+        info_url = self.infotub.registerReference(info_server, 'info')
+        logging.getLogger(__name__).debug('Info url: %s', info_url)
+#        self.infotub.startService()
+        self.coretub = Tub()
+        self.coretub.listenOn('tcp:%d' % (self.config.core.port+1))
+        self.coretub.setLocation("localhost:%d" % (self.config.core.port+1))
+#        self.coretub.setLocationAutomatically()
+        core_info_url = self.coretub.registerReference(info_server, 'info')
+        logging.getLogger(__name__).debug('Core Info url: %s', core_info_url)
+        eventmanager.emit(events.CoreUrlGenerated(core_info_url))
+#        self.coretub.startService()
+
     def setup_gstreamer(self):
         import gobject
         gobject.threads_init()
@@ -83,15 +116,6 @@ class Application(object):
 
 
     def get_service(self):
-        from afm import eventmanager
-        from afm.cred import AFMChecker, ServiceRealm
-        portal = Portal(ServiceRealm())
-        checker = AFMChecker()
-        checker.app = self
-        portal.registerChecker(checker)
-        factory = pb.PBServerFactory(portal)
-        from twisted.internet import reactor
-        eventmanager.emit(events.ApplicationLoaded())
         return internet.TCPServer(self.config.core.port, factory)
 
     def load_sources(self):
