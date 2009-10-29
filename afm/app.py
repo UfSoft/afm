@@ -9,10 +9,10 @@
 import logging
 
 from twisted.application import internet
-from twisted.python.log import PythonLoggingObserver
 from foolscap.api import Referenceable, Tub, UnauthenticatedTub
 
 from afm import eventmanager, events, __version__
+from afm.base import BaseApplication
 
 class InfoTub(Referenceable):
 
@@ -31,55 +31,16 @@ class InfoTub(Referenceable):
         self.coreurl = coreurl
 
 
-class Application(object):
+class Application(BaseApplication):
 
-    def __init__(self, parsed_options):
-        self.opts = parsed_options
+    def prepare_application(self):
         eventmanager.register_event_handler("ApplicationLoaded",
                                             self.load_sources)
-        self.setup_logging()
-        self.load_config()
         self.setup_tubs()
         self.setup_gstreamer()
         eventmanager.emit(events.ApplicationLoaded())
 
-
-    def setup_logging(self):
-
-        log = logging.getLogger('afm')
-        log.setLevel(self.opts['logging_level'])
-        if self.opts['logfile']:
-            from logging.handlers import RotatingFileHandler
-            handler = RotatingFileHandler(
-                self.opts['logfile'],
-                maxBytes=1*1024*1024,   # 1 MB
-                backupCount=5,
-                encoding='utf-8'
-            )
-        else:
-            handler = logging.StreamHandler()
-
-        handler.setLevel(self.opts['logging_level'])
-        formatter = logging.Formatter(
-            "%(asctime)s [%(levelname)-8s] [%(name)-15s] %(message)s",
-            "%H:%M:%S"
-        )
-        handler.setFormatter(formatter)
-        log.addHandler(handler)
-
-        log = logging.getLogger('twisted')
-        log.setLevel(self.opts['logging_level'])
-        log.addHandler(handler)
-
-        from afm.logger import Logging
-        logging.setLoggerClass(Logging)
-
-        twisted_logging = PythonLoggingObserver('twisted')
-        twisted_logging.start()
-
     def load_config(self):
-        from afm.config import Configuration
-        self.config = Configuration(self.opts['config-dir'])
         self.config.load_core_config()
 
     def setup_tubs(self):
@@ -114,9 +75,6 @@ class Application(object):
 #        gst.debug_set_default_threshold(gst.LEVEL_INFO)
 #        gst.debug_set_colored(True)
 
-
-    def get_service(self):
-        return internet.TCPServer(self.config.core.port, factory)
 
     def load_sources(self):
         from afm.sources import Source

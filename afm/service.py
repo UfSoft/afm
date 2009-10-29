@@ -45,7 +45,7 @@ class DaemonOptions(usage.Options):
 
     def opt_help(self):
         """Show this help message"""
-        super(Options, self).opt_help()
+        usage.Options.opt_help(self)
     opt_h = opt_help
 
     def opt_quiet(self):

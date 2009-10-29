@@ -8,7 +8,7 @@
 
 import logging
 
-from twisted.internet import defer
+from twisted.internet import defer, task
 from foolscap.api import Tub
 from afm.ui.glade import *
 
@@ -21,20 +21,29 @@ class ConnectionDetails(GladeWidget):
         self.window = self.gladeTree.get_widget('connection_details')
         self.window.set_icon(AFM_LOGO_PIXBUF)
         self.name = self.gladeTree.get_widget('name')
-        self.hostname = self.gladeTree.get_widget('hostname')
-        self.port = self.gladeTree.get_widget('port')
-        self.port.set_value(58848)
-        self.username = self.gladeTree.get_widget('username')
-        self.password = self.gladeTree.get_widget('password')
+        self.uri = self.gladeTree.get_widget('uri')
+        self.apply_button = self.gladeTree.get_widget('apply_button')
+        self.apply_button.set_property("visible", False)
+        self.add_button = self.gladeTree.get_widget('add_button')
 
     def get_signal_handlers(self):
         return {
             'cancel_button_clicked_cb': lambda widget: self.window.hide(),
             'add_button_clicked_cb': self.add_button_clicked_cb,
+            'apply_button_clicked_cb': self.apply_button_clicked_cb,
         }
 
     def show(self, widget=None):
+        self.new_connection()
+
+    def new_connection(self):
         self.window.show_all()
+        self.apply_button.set_property("visible", False)
+
+    def edit_connection(self):
+        self.window.show_all()
+        self.apply_button.set_property("visible", True)
+        self.add_button.set_property("visible", False)
 
     def hide(self, widget=None):
         self.window.hide_all()
@@ -48,30 +57,49 @@ class ConnectionDetails(GladeWidget):
     def add_button_clicked_cb(self, widget):
         pass
 
+    def apply_button_clicked_cb(self, widget):
+        pass
+
 
 CON_STATUS, CON_NAME, CON_URI, CON_VERSION, CON_CORE_URI = range(5)
 ST_OFFLINE, ST_ONLINE, ST_CONNECTED = range(3)
 
 class ConnectionsManager(GladeWidget):
     gladefile = 'ConnectionsManager.glade'
+    connection_update_interval = 10
 
     def prepare_widget(self):
         self.window = self.gladeTree.get_widget('connection_manager')
         self.window.set_icon(AFM_LOGO_PIXBUF)
+        self.edit_connection_button = self.gladeTree.get_widget(
+            'edit_connection_button'
+        )
+        self.start_service_button = self.gladeTree.get_widget(
+            'start_service_button'
+        )
 
         self.conn_status_pixbuff = []
         for stock_id in (gtk.STOCK_NO, gtk.STOCK_YES, gtk.STOCK_CONNECT):
             self.conn_status_pixbuff.append(
                 self.window.render_icon(stock_id, gtk.ICON_SIZE_MENU)
             )
+        self.conn_status_task = task.LoopingCall(self._conn_update_details)
         self.prepare_connections()
+        conn_treeview_selection = self.conn_treeview.get_selection()
+#        conn_treeview_selection.set_select_function(self.conn_treeview_selection_changed)
+        self.conn_treeview_selection = conn_treeview_selection
+        conn_treeview_selection.connect("changed",
+                                        self.conn_treeview_selection_changed)
+#        conn_treeview_selection.set_mode(gtk.SELECTION_SINGLE)
+
 
     def get_signal_handlers(self):
         return {
             'new_connection_button_clicked_cb': self.new_connection_button_clicked_cb,
             'delete_connection_button_clicked_cb': self.delete_connection_button_clicked_cb,
             'connect_button_clicked_cb': self.connect_button_clicked_cb,
-            'close_button_clicked_cb': self.close_button_clicked_cb
+            'close_button_clicked_cb': self.close_button_clicked_cb,
+            'start_service_button_clicked_cb': self.start_service_button_clicked_cb,
         }
 
     def new_connection_button_clicked_cb(self, widget):
@@ -88,13 +116,30 @@ class ConnectionsManager(GladeWidget):
         print 'close'
         self.hide()
 
+    def start_service_button_clicked_cb(self, widget):
+        self.conn_status_task.stop()
+        from afm.app import Application
+        daemon = Application(self.parent.opts)
+        daemon.infotub.startService()
+        daemon.coretub.startService()
+        self.conn_status_task.start(self.connection_update_interval, now=True)
+
+    def conn_treeview_selection_changed(self, selection):
+        model, treeiter = selection.get_selected()
+        conn_status = self.conn_model.get(treeiter, CON_STATUS)[0]
+        if conn_status == ST_OFFLINE:
+            self.start_service_button.set_property('sensitive', True)
+        else:
+            self.start_service_button.set_property('sensitive', False)
+        self.edit_connection_button.set_property('sensitive', True)
+
     def prepare_connections(self):
         self.conn_treeview = self.gladeTree.get_widget('connections_treeview')
         self._conn_create_model()
         self.conn_treeview.set_model(self.conn_model)
         self._conn_model_populate()
         self._conn_create_columns()
-        self._conn_update_status()
+        self.conn_status_task.start(self.connection_update_interval, now=True)
 
     def _conn_create_model(self):
         self.conn_model = gtk.ListStore(gobject.TYPE_INT,        # Status
@@ -181,7 +226,8 @@ class ConnectionsManager(GladeWidget):
         log.debug("Failed to process remote call for URI %s: %s",
                   entry[CON_URI], fail)
 
-    def _conn_update_status(self):
+    @defer.inlineCallbacks
+    def _conn_update_details(self):
         for entry in self.conn_model:
             uri = entry[CON_URI]
             log.debug("Server connection Attempt: %s", uri)
@@ -190,11 +236,14 @@ class ConnectionsManager(GladeWidget):
             d = tub.getReference(uri)
             d.addCallback(self.__got_remote_reference, entry)
             d.addErrback(self.__remote_tub_failure, entry)
+            yield d
 
     def show(self, widget=None):
+        self.conn_status_task.start(self.connection_update_interval, now=True)
         self.window.show_all()
 
     def hide(self, widget=None):
+        self.conn_status_task.stop()
         self.window.hide_all()
 
     def toggle(self, widget=None):

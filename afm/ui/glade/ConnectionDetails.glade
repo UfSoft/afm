@@ -17,8 +17,8 @@
         <child>
           <widget class="GtkTable" id="table1">
             <property name="visible">True</property>
-            <property name="n_rows">4</property>
-            <property name="n_columns">4</property>
+            <property name="n_rows">2</property>
+            <property name="n_columns">2</property>
             <child>
               <widget class="GtkLabel" id="name_label">
                 <property name="visible">True</property>
@@ -35,13 +35,13 @@
               </widget>
               <packing>
                 <property name="left_attach">1</property>
-                <property name="right_attach">4</property>
+                <property name="right_attach">2</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkLabel" id="hostname_label">
+              <widget class="GtkLabel" id="uri_label">
                 <property name="visible">True</property>
-                <property name="label" translatable="yes">&lt;b&gt;Hostname:&lt;/b&gt;</property>
+                <property name="label" translatable="yes">&lt;b&gt;URI:&lt;/b&gt;</property>
                 <property name="use_markup">True</property>
                 <property name="justify">right</property>
               </widget>
@@ -51,11 +51,11 @@
               </packing>
             </child>
             <child>
-              <widget class="GtkEntry" id="hostname">
+              <widget class="GtkEntry" id="uri">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="invisible_char">&#x25CF;</property>
-                <property name="text" translatable="yes">localhost</property>
+                <property name="text" translatable="yes">pbu://localhost:58849/info</property>
                 <property name="truncate_multiline">True</property>
               </widget>
               <packing>
@@ -63,85 +63,6 @@
                 <property name="right_attach">2</property>
                 <property name="top_attach">1</property>
                 <property name="bottom_attach">2</property>
-              </packing>
-            </child>
-            <child>
-              <widget class="GtkLabel" id="port_label">
-                <property name="visible">True</property>
-                <property name="label" translatable="yes">&lt;b&gt;Port:&lt;/b&gt;</property>
-                <property name="use_markup">True</property>
-              </widget>
-              <packing>
-                <property name="left_attach">2</property>
-                <property name="right_attach">3</property>
-                <property name="top_attach">1</property>
-                <property name="bottom_attach">2</property>
-              </packing>
-            </child>
-            <child>
-              <widget class="GtkSpinButton" id="port">
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="max_length">65535</property>
-                <property name="invisible_char">&#x25CF;</property>
-                <property name="adjustment">58848 1 65535 1 10 10</property>
-                <property name="snap_to_ticks">True</property>
-                <property name="numeric">True</property>
-              </widget>
-              <packing>
-                <property name="left_attach">3</property>
-                <property name="right_attach">4</property>
-                <property name="top_attach">1</property>
-                <property name="bottom_attach">2</property>
-              </packing>
-            </child>
-            <child>
-              <widget class="GtkLabel" id="username_label">
-                <property name="visible">True</property>
-                <property name="label" translatable="yes">&lt;b&gt;Username:&lt;/b&gt;</property>
-                <property name="use_markup">True</property>
-              </widget>
-              <packing>
-                <property name="top_attach">2</property>
-                <property name="bottom_attach">3</property>
-              </packing>
-            </child>
-            <child>
-              <widget class="GtkLabel" id="password_label">
-                <property name="visible">True</property>
-                <property name="label" translatable="yes">&lt;b&gt;Password:&lt;/b&gt;</property>
-                <property name="use_markup">True</property>
-              </widget>
-              <packing>
-                <property name="top_attach">3</property>
-                <property name="bottom_attach">4</property>
-              </packing>
-            </child>
-            <child>
-              <widget class="GtkEntry" id="username">
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="invisible_char">&#x25CF;</property>
-              </widget>
-              <packing>
-                <property name="left_attach">1</property>
-                <property name="right_attach">4</property>
-                <property name="top_attach">2</property>
-                <property name="bottom_attach">3</property>
-              </packing>
-            </child>
-            <child>
-              <widget class="GtkEntry" id="password">
-                <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="visibility">False</property>
-                <property name="invisible_char">&#x25CF;</property>
-              </widget>
-              <packing>
-                <property name="left_attach">1</property>
-                <property name="right_attach">4</property>
-                <property name="top_attach">3</property>
-                <property name="bottom_attach">4</property>
               </packing>
             </child>
           </widget>
@@ -154,6 +75,20 @@
             <property name="visible">True</property>
             <property name="layout_style">end</property>
             <child>
+              <widget class="GtkButton" id="apply_button">
+                <property name="label" translatable="yes">gtk-apply</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="use_stock">True</property>
+                <signal name="clicked" handler="apply_button_clicked_cb"/>
+              </widget>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">False</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
               <widget class="GtkButton" id="add_button">
                 <property name="label" translatable="yes">gtk-add</property>
                 <property name="visible">True</property>
@@ -165,7 +100,7 @@
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">False</property>
-                <property name="position">0</property>
+                <property name="position">1</property>
               </packing>
             </child>
             <child>
@@ -180,7 +115,7 @@
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">False</property>
-                <property name="position">1</property>
+                <property name="position">2</property>
               </packing>
             </child>
           </widget>

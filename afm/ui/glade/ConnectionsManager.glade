@@ -31,6 +31,8 @@
                     <property name="reorderable">True</property>
                     <property name="enable_search">False</property>
                     <property name="enable_grid_lines">horizontal</property>
+                    <signal name="select_cursor_row" handler="connections_treeview_select_cursor_row_cb"/>
+                    <signal name="set_focus_child" handler="connections_treeview_set_focus_child_cb"/>
                   </widget>
                 </child>
               </widget>
@@ -55,11 +57,12 @@
                   </widget>
                   <packing>
                     <property name="expand">False</property>
+                    <property name="fill">False</property>
                     <property name="position">0</property>
                   </packing>
                 </child>
                 <child>
-                  <widget class="GtkButton" id="edit_button">
+                  <widget class="GtkButton" id="edit_connection_button">
                     <property name="label" translatable="yes">gtk-edit</property>
                     <property name="visible">True</property>
                     <property name="sensitive">False</property>
@@ -69,6 +72,7 @@
                   </widget>
                   <packing>
                     <property name="expand">False</property>
+                    <property name="fill">False</property>
                     <property name="position">1</property>
                   </packing>
                 </child>
@@ -84,6 +88,7 @@
                   </widget>
                   <packing>
                     <property name="expand">False</property>
+                    <property name="fill">False</property>
                     <property name="position">2</property>
                   </packing>
                 </child>
@@ -119,11 +124,12 @@
               </packing>
             </child>
             <child>
-              <widget class="GtkButton" id="start_daemon_button">
+              <widget class="GtkButton" id="start_service_button">
                 <property name="visible">True</property>
                 <property name="sensitive">False</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <signal name="clicked" handler="start_service_button_clicked_cb"/>
                 <child>
                   <widget class="GtkHBox" id="hbox1">
                     <property name="visible">True</property>
@@ -140,7 +146,7 @@
                     <child>
                       <widget class="GtkLabel" id="label1">
                         <property name="visible">True</property>
-                        <property name="label" translatable="yes">Start</property>
+                        <property name="label" translatable="yes">Start Service</property>
                       </widget>
                       <packing>
                         <property name="position">1</property>

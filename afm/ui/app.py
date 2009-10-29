@@ -14,11 +14,12 @@ import gobject
 
 import pango
 
+from twisted.internet import defer, reactor
+
+from afm.base import BaseApplication
 from afm.ui.about import AboutDialog
 from afm.ui.connections import ConnectionsManager
 from afm.ui.glade import GladeWidget, AFM_LOGO_PATH
-from twisted.internet import defer, reactor
-from twisted.python.log import PythonLoggingObserver
 
 class Splash(GladeWidget):
     gladefile = 'SplashScreen.glade'
@@ -75,12 +76,10 @@ class Splash(GladeWidget):
 #            d.addErrback(errback)
             yield self.progress.set_fraction(step_fraction)
 
-class Application(object):
-    def __init__(self, parsed_options):
-        self.opts = parsed_options
-        self.setup_logging()
+class Application(BaseApplication):
+
+    def prepare_application(self):
         self.splash = Splash(parent=self)
-#        self.splash.register_step(self.setup_logging)
         self.splash.register_step(self.load_config)
         self.splash.register_step(self.setup_about_dialog)
         self.splash.register_step(self.setup_trayicon)
@@ -92,41 +91,7 @@ class Application(object):
 #            self.splash.register_step(r.read, 524288)
         reactor.callInThread(self.startup)
 
-    def setup_logging(self):
-        log = logging.getLogger('afm')
-        log.setLevel(self.opts['logging_level'])
-        if self.opts['logfile']:
-            from logging.handlers import RotatingFileHandler
-            handler = RotatingFileHandler(
-                self.opts['logfile'],
-                maxBytes=1*1024*1024,   # 1 MB
-                backupCount=5,
-                encoding='utf-8'
-            )
-        else:
-            handler = logging.StreamHandler()
-
-        handler.setLevel(self.opts['logging_level'])
-        formatter = logging.Formatter(
-            "%(asctime)s [%(levelname)-8s] [%(name)-15s] %(message)s",
-            "%H:%M:%S"
-        )
-        handler.setFormatter(formatter)
-        log.addHandler(handler)
-
-        log = logging.getLogger('twisted')
-        log.setLevel(self.opts['logging_level'])
-        log.addHandler(handler)
-
-        from afm.logger import Logging
-        logging.setLoggerClass(Logging)
-
-        twisted_logging = PythonLoggingObserver('twisted')
-        twisted_logging.start()
-
     def load_config(self):
-        from afm.config import Configuration
-        self.config = Configuration(self.opts['config-dir'])
         self.config.load_ui_config()
 
     @defer.inlineCallbacks
@@ -135,8 +100,8 @@ class Application(object):
         if self.opts['logging_level'] != logging.DEBUG:
             while not self.splash.can_close:
                 pass
-        yield self.splash.window.destroy()
-        yield self.connmanager.window.show()
+        yield reactor.callLater(1, self.splash.window.destroy)
+        yield reactor.callLater(1, self.connmanager.window.show)
 
     def setup_about_dialog(self):
         self.about_dialog = AboutDialog(self)
