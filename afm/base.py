@@ -15,6 +15,7 @@ class BaseApplication(object):
     def __init__(self, parsed_options):
         self.opts = parsed_options
         self.setup_logging()
+        self.log = logging.getLogger(self.__class__.__module__)
         self.config = Configuration(self.opts['config-dir'])
         self.load_config()
         self.prepare_application()

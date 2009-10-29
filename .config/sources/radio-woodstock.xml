@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <source name="Rádio Woodstock" uri="mms://195.245.168.21/radio3">
   <params>
-    <param name="active" value="0" type="bool"/>
+    <param name="active" value="1" type="bool"/>
     <param name="buffer-size" value="0.1" type="float"/>   <!-- in megabytes -->
     <param name="buffer-duration" value="2" type="int"/>  <!-- in seconds -->
   </params>

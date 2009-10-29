@@ -30,6 +30,8 @@ class InfoTub(Referenceable):
     def _update_core_url(self, coreurl):
         self.coreurl = coreurl
 
+class CoreTub(Referenceable):
+    pass
 
 class Application(BaseApplication):
 
@@ -52,11 +54,12 @@ class Application(BaseApplication):
         info_url = self.infotub.registerReference(info_server, 'info')
         logging.getLogger(__name__).debug('Info url: %s', info_url)
 #        self.infotub.startService()
+        core_server = CoreTub()
         self.coretub = Tub()
         self.coretub.listenOn('tcp:%d' % (self.config.core.core_port))
         self.coretub.setLocation("localhost:%d" % (self.config.core.core_port))
 #        self.coretub.setLocationAutomatically()
-        core_info_url = self.coretub.registerReference(info_server, 'info')
+        core_info_url = self.coretub.registerReference(core_server, 'core')
         logging.getLogger(__name__).debug('Core Info url: %s', core_info_url)
         eventmanager.emit(events.CoreUrlGenerated(core_info_url))
 #        self.coretub.startService()
@@ -89,4 +92,12 @@ class Application(BaseApplication):
             log.debug("%s active. Loading...", source_config)
             source = Source(source_config)
             source.prepare_source()
+
+    def start_services(self):
+        self.infotub.startService()
+        self.coretub.startService()
+
+    def stop_services(self):
+        self.infotub.stopService()
+        self.coretub.stopService()
 

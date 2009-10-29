@@ -11,8 +11,15 @@ import logging
 from twisted.internet import defer, task
 from foolscap.api import Tub
 from afm.ui.glade import *
+from afm import eventmanager, events
 
 log = logging.getLogger(__name__)
+
+class DaemonStarted(events.Event):
+    pass
+
+class DaemonStopped(events.Event):
+    pass
 
 class ConnectionDetails(GladeWidget):
     gladefile = 'ConnectionDetails.glade'
@@ -67,12 +74,20 @@ ST_OFFLINE, ST_ONLINE, ST_CONNECTED = range(3)
 class ConnectionsManager(GladeWidget):
     gladefile = 'ConnectionsManager.glade'
     connection_update_interval = 10
+    selected_connection_iter = None
+    daemon_running = None
 
     def prepare_widget(self):
+        eventmanager.register_event_handler("DaemonStarted",
+                                            self.on_event_daemon_started)
         self.window = self.gladeTree.get_widget('connection_manager')
         self.window.set_icon(AFM_LOGO_PIXBUF)
+        self.connect_button = self.gladeTree.get_widget('connect_button')
         self.edit_connection_button = self.gladeTree.get_widget(
             'edit_connection_button'
+        )
+        self.delete_connection_button = self.gladeTree.get_widget(
+            'delete_connection_button'
         )
         self.start_service_button = self.gladeTree.get_widget(
             'start_service_button'
@@ -86,11 +101,16 @@ class ConnectionsManager(GladeWidget):
         self.conn_status_task = task.LoopingCall(self._conn_update_details)
         self.prepare_connections()
         conn_treeview_selection = self.conn_treeview.get_selection()
-#        conn_treeview_selection.set_select_function(self.conn_treeview_selection_changed)
-        self.conn_treeview_selection = conn_treeview_selection
         conn_treeview_selection.connect("changed",
                                         self.conn_treeview_selection_changed)
-#        conn_treeview_selection.set_mode(gtk.SELECTION_SINGLE)
+        self.conn_treeview_selection = conn_treeview_selection
+
+    def on_event_daemon_started(self):
+        self.start_service_button.set_property('sensitive', False)
+        self.connect_button.set_property('sensitive', True)
+
+    def on_event_daemon_stopped(self):
+        pass
 
 
     def get_signal_handlers(self):
@@ -107,31 +127,69 @@ class ConnectionsManager(GladeWidget):
         connection_details.show()
 
     def delete_connection_button_clicked_cb(self, widget):
-        pass
+        log.debug("Delete connection: %s",
+                  self.conn_model.get(self.selected_connection_iter, CON_NAME))
+        self.conn_model.remove(self.selected_connection_iter)
+        # XXX: Delete connection configuration from config file
 
+    @defer.inlineCallbacks
     def connect_button_clicked_cb(self, widget):
-        pass
+        log.debug("Trying to connect to Core: %s",
+                  self.conn_model.get(self.selected_connection_iter, CON_NAME)[0])
+        uri = yield self.conn_model.get(self.selected_connection_iter, CON_CORE_URI)[0]
+        tub = yield Tub()
+        tub.startService()
+        yield  tub.getReference(uri).addCallbacks(self.__core_connect_success,
+                                                  self.__core_connect_fail)
+
+    def __core_connect_success(self, remote):
+        log.debug("Connected to core")
+        self.parent.connected_to_core(remote)
+        self.hide()
+        self.window.destroy()
+
+    def __core_connect_fail(self, fail):
+        log.debug("Failed to connect to core: %s", fail)
 
     def close_button_clicked_cb(self, widget):
         print 'close'
         self.hide()
 
+
     def start_service_button_clicked_cb(self, widget):
-        self.conn_status_task.stop()
+        log.debug("Starting local daemon")
         from afm.app import Application
-        daemon = Application(self.parent.opts)
-        daemon.infotub.startService()
-        daemon.coretub.startService()
-        self.conn_status_task.start(self.connection_update_interval, now=True)
+        self.conn_status_task.stop()
+        self.daemon_running = Application(self.parent.opts)
+        self.daemon_running.start_services()
+        self.conn_status_task.start(self.connection_update_interval,
+                                          now=True)
+        eventmanager.emit(DaemonStarted())
 
     def conn_treeview_selection_changed(self, selection):
-        model, treeiter = selection.get_selected()
-        conn_status = self.conn_model.get(treeiter, CON_STATUS)[0]
-        if conn_status == ST_OFFLINE:
-            self.start_service_button.set_property('sensitive', True)
+        model, self.selected_connection_iter = selection.get_selected()
+        log.debug("%s %s", model, self.selected_connection_iter)
+        if self.selected_connection_iter:
+            conn_status = model.get(self.selected_connection_iter, CON_STATUS)[0]
+            log.debug("DR: %s", self.daemon_running)
+            if self.daemon_running is None:
+                if conn_status == ST_OFFLINE:
+                    self.start_service_button.set_property('sensitive', True)
+                else:
+                    self.start_service_button.set_property('sensitive', False)
+
+            if conn_status == ST_ONLINE:
+                self.connect_button.set_property('sensitive', True)
+            elif conn_status in (ST_OFFLINE, ST_CONNECTED):
+                self.connect_button.set_property('sensitive', False)
+
+            self.edit_connection_button.set_property('sensitive', True)
+            self.delete_connection_button.set_property('sensitive', True)
         else:
+            self.edit_connection_button.set_property('sensitive', False)
+            self.delete_connection_button.set_property('sensitive', False)
             self.start_service_button.set_property('sensitive', False)
-        self.edit_connection_button.set_property('sensitive', True)
+            self.connect_button.set_property('sensitive', False)
 
     def prepare_connections(self):
         self.conn_treeview = self.gladeTree.get_widget('connections_treeview')

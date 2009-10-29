@@ -52,7 +52,9 @@ class Splash(GladeWidget):
         self.window.hide_all()
 
     def register_step(self, function, *args, **kwargs):
-        print 'registering', function, args, kwargs
+        log = logging.getLogger(__name__).debug(
+            "Registering step function %s with %r %r as args and kwargs",
+            function, args, kwargs)
         self.steps[len(self.steps)] = (function, args, kwargs)
 
     @defer.inlineCallbacks
@@ -169,3 +171,7 @@ class Application(BaseApplication):
         """Exits the application."""
         self.tray_icon.set_visible(False)
         reactor.stop()
+
+    def connected_to_core(self, remote):
+        self.core = remote
+        self.log.debug("Should pass needed signals")
